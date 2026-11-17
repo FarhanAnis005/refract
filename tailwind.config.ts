@@ -11,36 +11,41 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        paper: {
-          50: "#FAF8F5",
-          100: "#F5F2EC",
-          200: "#EBE5DB",
-          300: "#DDD4C4",
-          800: "#2B2825",
-          900: "#1A1917",
+        obsidian: {
+          950: "#060911",
+          900: "#090E1A",
+          850: "#0D1322",
+          800: "#131C31",
+          700: "#1E2A47",
+          600: "#2B3B60",
         },
         studio: {
-          accent: "#F97316", // warm vibrant orange/amber for family & creativity
-          dark: "#0F172A",
-          muted: "#64748B",
-          card: "#FFFFFF",
-          border: "#E2E8F0",
-        }
+          accent: "#F97316",
+          amber: "#F59E0B",
+          emerald: "#10B981",
+          cyan: "#06B6D4",
+          violet: "#8B5CF6",
+        },
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "-apple-system", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
       },
+      boxShadow: {
+        glow: "0 0 25px -5px rgba(249, 115, 22, 0.25)",
+        "glow-emerald": "0 0 25px -5px rgba(16, 185, 129, 0.25)",
+        "glow-cyan": "0 0 25px -5px rgba(6, 182, 212, 0.25)",
+      },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "shimmer": "shimmer 2s infinite linear",
+        float: "float 6s ease-in-out infinite",
       },
       keyframes: {
-        shimmer: {
-          "0%": { backgroundPosition: "-200% 0" },
-          "100%": { backgroundPosition: "200% 0" },
-        }
-      }
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
+        },
+      },
     },
   },
   plugins: [],

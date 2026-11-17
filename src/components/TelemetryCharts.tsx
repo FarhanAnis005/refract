@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -24,6 +24,9 @@ import {
   BarChart3,
   Flame,
   CheckCircle2,
+  Copy,
+  Check,
+  Code2,
 } from "lucide-react";
 
 interface TelemetryChartsProps {
@@ -33,12 +36,15 @@ interface TelemetryChartsProps {
 }
 
 export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ run, runs, onSelectRun }) => {
+  const [copied, setCopied] = useState(false);
+  const [showRawJson, setShowRawJson] = useState(false);
+
   if (!run) {
     return (
-      <div className="p-12 text-center bg-paper-100 rounded-2xl border border-paper-300">
-        <Cpu className="w-10 h-10 text-paper-800/40 mx-auto mb-3" />
-        <h3 className="text-base font-bold text-paper-900">No Telemetry Available</h3>
-        <p className="text-xs text-paper-800/70 mt-1">
+      <div className="p-12 text-center glass-panel rounded-3xl">
+        <Cpu className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+        <h3 className="text-base font-bold text-white">No Telemetry Available</h3>
+        <p className="text-xs text-slate-400 mt-1">
           Generate a 4-page coloring pack in the Studio to view real-time latency and FinOps analytics.
         </p>
       </div>
@@ -48,16 +54,15 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ run, runs, onS
   // Calculate Unit Economics
   const avgCostPerPage =
     run.pages.length > 0
-      ? (run.total_pack_cost_usd / run.pages.length).toFixed(5)
-      : (0.0015).toFixed(5);
-  const totalPackCost = run.total_pack_cost_usd.toFixed(5);
+      ? (run.total_pack_cost_usd / run.pages.length).toFixed(4)
+      : (0.012).toFixed(4);
+  const totalPackCost = run.total_pack_cost_usd.toFixed(4);
   const packsPerDollar = run.packs_per_dollar || Math.round(1 / run.total_pack_cost_usd);
 
   // 1. Waterfall Pipeline Latency Data
-  // Each pipeline stage plotted as horizontal stacked bar segments
   const waterfallData = [
     {
-      stage: "Warmup Overlap",
+      stage: "Warmup",
       duration: run.warmup_overlap_sec || 1.2,
       type: "Infrastructure",
     },
@@ -67,7 +72,7 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ run, runs, onS
       type: "Vision-Language",
     },
     {
-      stage: "VLM Bible Stream",
+      stage: "VLM Bible",
       duration: Number(((run.vlm_total_ms - run.vlm_ttft_ms) / 1000).toFixed(2)),
       type: "Vision-Language",
     },
@@ -78,7 +83,7 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ run, runs, onS
         type: "Diffusion",
       },
       {
-        stage: `P${page.variant_index} VAE Decode`,
+        stage: `P${page.variant_index} VAE`,
         duration: Number((page.vae_decode_ms / 1000).toFixed(2)),
         type: "Decode",
       },
@@ -93,19 +98,23 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ run, runs, onS
     vae_sec: Number((p.vae_decode_ms / 1000).toFixed(2)),
     total_sec: Number((p.total_render_ms / 1000).toFixed(2)),
     cost_usd: Number(p.cost_usd.toFixed(6)),
-    cost_millicents: Number((p.cost_usd * 1000).toFixed(3)), // for readable visual scale
   }));
 
-  // Tooltip custom formatter
+  const handleCopyJson = () => {
+    navigator.clipboard.writeText(JSON.stringify(run, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const renderCustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-paper-900 text-white text-xs p-3 rounded-lg shadow-xl border border-paper-800">
-          <p className="font-bold text-studio-accent mb-1">{label}</p>
+        <div className="bg-slate-950/95 border border-white/20 text-white text-xs p-3.5 rounded-xl shadow-2xl backdrop-blur-md">
+          <p className="font-bold text-studio-accent mb-1.5">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={`item-${index}`} className="flex justify-between gap-4 py-0.5">
-              <span className="text-paper-200">{entry.name}:</span>
-              <span className="font-mono font-bold">
+            <p key={`item-${index}`} className="flex justify-between gap-6 py-0.5 font-mono">
+              <span className="text-slate-400">{entry.name}:</span>
+              <span className="font-bold text-white">
                 {entry.value}
                 {entry.unit || ""}
               </span>
@@ -119,189 +128,223 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ run, runs, onS
 
   return (
     <div className="space-y-8">
-      {/* Run Selector & Active Run Meta Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-paper-100 border border-paper-300">
+      {/* Header & Multi-Run Selector */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl glass-panel">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <h2 className="text-xl font-bold text-paper-900">Modal T4 + Gemma 4 FinOps Telemetry</h2>
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34D399]" />
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              Modal NVIDIA T4 &amp; Gemma 4 Telemetry
+            </h2>
           </div>
-          <p className="text-xs text-paper-800/80 mt-1">
-            Real-time inference latency waterfall, GPU compute accounting, and unit economics.
+          <p className="text-xs text-slate-400 mt-1">
+            Real-time serverless inference profiling, token throughput, and exact GPU billing accounting.
           </p>
         </div>
 
         {/* Multi-Run Selector Dropdown */}
         <div className="flex items-center gap-3">
-          <label className="text-xs font-semibold text-paper-800">Selected Run:</label>
+          <label className="text-xs font-semibold text-slate-300">Selected Run:</label>
           <select
             value={run.run_id}
             onChange={(e) => onSelectRun(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-white border border-paper-300 text-xs font-mono font-semibold text-paper-900 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-studio-accent"
+            className="px-3.5 py-2 rounded-xl bg-slate-950/90 border border-white/15 text-xs font-mono font-semibold text-white shadow-xs focus:border-studio-accent focus:outline-hidden cursor-pointer"
           >
             {runs.map((r, i) => (
               <option key={r.run_id} value={r.run_id}>
-                {r.run_id.startsWith("bench") ? "⭐ [Benchmark] " : `Run #${runs.length - i} `}
-                ({r.run_id.slice(0, 10)}) • {r.pages.length} Pages • {r.vacation_setting?.slice(0, 16)}...
+                {r.run_id.startsWith("bench") ? "⭐ [Production Pack] " : `Run #${runs.length - i} `}
+                ({r.run_id.slice(0, 16)}) • {r.pages.length} Pages • {r.vacation_setting?.slice(0, 18)}
               </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* KPI Cards: Unit-Economics & Model Metrics */}
+      {/* KPI Cards: Unit Economics & Hardware Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {/* Cost per Page */}
-        <div className="p-4 rounded-xl bg-white border border-paper-300 shadow-xs">
-          <div className="flex items-center justify-between text-paper-800/80 mb-2">
-            <span className="text-xs font-semibold">Cost per Page</span>
-            <DollarSign className="w-4 h-4 text-emerald-600" />
+        <div className="p-5 rounded-3xl glass-panel space-y-2 border-t-2 border-t-emerald-400">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider">Cost / Page</span>
+            <DollarSign className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-black font-mono text-paper-900">${avgCostPerPage}</div>
-          <span className="text-[11px] text-emerald-700 font-medium">NVIDIA T4 ($0.000164/s)</span>
+          <div className="text-2xl sm:text-3xl font-black font-mono text-white text-glow-emerald">
+            ${avgCostPerPage}
+          </div>
+          <span className="text-[11px] text-emerald-400 font-mono block">
+            Modal T4 @ $0.000164/s
+          </span>
         </div>
 
         {/* Cost per 4-Page Pack */}
-        <div className="p-4 rounded-xl bg-white border border-paper-300 shadow-xs">
-          <div className="flex items-center justify-between text-paper-800/80 mb-2">
-            <span className="text-xs font-semibold">Cost per 4-Page Pack</span>
+        <div className="p-5 rounded-3xl glass-panel space-y-2 border-t-2 border-t-studio-accent">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider">Cost / 4-Pack</span>
             <Flame className="w-4 h-4 text-studio-accent" />
           </div>
-          <div className="text-2xl font-black font-mono text-paper-900">${totalPackCost}</div>
-          <span className="text-[11px] text-paper-800/80 font-medium">Complete Kids&apos; Book</span>
+          <div className="text-2xl sm:text-3xl font-black font-mono text-white text-glow-accent">
+            ${totalPackCost}
+          </div>
+          <span className="text-[11px] text-slate-400 font-medium block">
+            Complete Coloring Book
+          </span>
         </div>
 
         {/* Packs per $1.00 */}
-        <div className="p-4 rounded-xl bg-white border border-paper-300 shadow-xs">
-          <div className="flex items-center justify-between text-paper-800/80 mb-2">
-            <span className="text-xs font-semibold">Packs per $1.00</span>
-            <Zap className="w-4 h-4 text-amber-500" />
+        <div className="p-5 rounded-3xl glass-panel space-y-2 border-t-2 border-t-amber-400">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider">Packs / $1.00</span>
+            <Zap className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-2xl font-black font-mono text-paper-900">{packsPerDollar}</div>
-          <span className="text-[11px] text-paper-800/80 font-medium">packs / dollar spend</span>
+          <div className="text-2xl sm:text-3xl font-black font-mono text-white">
+            {packsPerDollar}
+          </div>
+          <span className="text-[11px] text-slate-400 font-medium block">
+            packs generated per $1
+          </span>
         </div>
 
         {/* Active VLM Model */}
-        <div className="p-4 rounded-xl bg-white border border-paper-300 shadow-xs">
-          <div className="flex items-center justify-between text-paper-800/80 mb-2">
-            <span className="text-xs font-semibold">Active VLM Model</span>
-            <Sparkles className="w-4 h-4 text-indigo-600" />
+        <div className="p-5 rounded-3xl glass-panel space-y-2 border-t-2 border-t-studio-cyan">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider">Active VLM</span>
+            <Sparkles className="w-4 h-4 text-studio-cyan" />
           </div>
-          <div className="text-sm font-bold font-mono text-paper-900 truncate" title={run.active_vlm_model}>
+          <div className="text-sm font-bold font-mono text-white truncate" title={run.active_vlm_model}>
             {run.active_vlm_model}
           </div>
-          <span className="text-[11px] text-paper-800/80 font-medium">Character Bible Spec</span>
+          <span className="text-[11px] text-slate-400 font-medium block">
+            Character Bible Spec
+          </span>
         </div>
 
         {/* Token Throughput */}
-        <div className="p-4 rounded-xl bg-white border border-paper-300 shadow-xs col-span-2 md:col-span-1">
-          <div className="flex items-center justify-between text-paper-800/80 mb-2">
-            <span className="text-xs font-semibold">VLM Throughput</span>
-            <Timer className="w-4 h-4 text-purple-600" />
+        <div className="p-5 rounded-3xl glass-panel space-y-2 col-span-2 md:col-span-1 border-t-2 border-t-purple-400">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider">VLM Speed</span>
+            <Timer className="w-4 h-4 text-purple-400" />
           </div>
-          <div className="text-2xl font-black font-mono text-paper-900">{run.tokens_per_sec}</div>
-          <span className="text-[11px] text-paper-800/80 font-medium">tokens / sec (TTFT: {(run.vlm_ttft_ms / 1000).toFixed(2)}s)</span>
+          <div className="text-2xl sm:text-3xl font-black font-mono text-white">
+            {run.tokens_per_sec}
+          </div>
+          <span className="text-[11px] text-slate-400 font-medium block">
+            tok/s (TTFT: {(run.vlm_ttft_ms / 1000).toFixed(2)}s)
+          </span>
         </div>
       </div>
 
       {/* Chart 1: Pipeline Latency Waterfall */}
-      <div className="p-6 rounded-2xl bg-white border border-paper-300 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-paper-200 pb-4">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
           <div>
-            <h3 className="text-base font-bold text-paper-900 flex items-center gap-2">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-studio-accent" />
               Pipeline Latency Waterfall (Stage by Stage)
             </h3>
-            <p className="text-xs text-paper-800/70 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               Breakdown of Warmup Overlap, Gemma 4 VLM Analysis, and per-page KSampler vs. VAE Decode.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs font-mono font-semibold bg-paper-100 px-3 py-1.5 rounded-lg text-paper-900">
+          <div className="flex items-center gap-2 text-xs font-mono font-bold bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-xl text-white">
             Total E2E: {run.total_e2e_sec}s
           </div>
         </div>
 
-        <div className="h-72 w-full">
+        <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               layout="vertical"
               data={waterfallData}
-              margin={{ top: 10, right: 30, left: 100, bottom: 10 }}
+              margin={{ top: 10, right: 30, left: 110, bottom: 10 }}
             >
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#EBE5DB" />
+              <defs>
+                <linearGradient id="waterfallGradient" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#F97316" />
+                  <stop offset="100%" stopColor="#FB923C" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.08)" />
               <XAxis
                 type="number"
                 unit="s"
-                tick={{ fontSize: 11, fill: "#64748B" }}
-                domain={[0, "dataMax + 1"]}
+                tick={{ fontSize: 11, fill: "#94A3B8" }}
+                domain={[0, "dataMax + 2"]}
               />
               <YAxis
                 type="category"
                 dataKey="stage"
-                tick={{ fontSize: 11, fill: "#2B2825", fontWeight: 600 }}
-                width={110}
+                tick={{ fontSize: 11, fill: "#E2E8F0", fontWeight: 600 }}
+                width={120}
               />
               <Tooltip content={renderCustomTooltip} />
-              <Bar dataKey="duration" name="Duration (sec)" fill="#F97316" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="duration" name="Duration (sec)" fill="url(#waterfallGradient)" radius={[0, 6, 6, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Chart 2: Per-Page Time & Modal T4 Cost (Composed Bar + Line Chart) */}
-      <div className="p-6 rounded-2xl bg-white border border-paper-300 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-paper-200 pb-4">
+      <div className="p-6 sm:p-8 rounded-3xl glass-panel space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
           <div>
-            <h3 className="text-base font-bold text-paper-900 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-emerald-600" />
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Layers className="w-4 h-4 text-emerald-400" />
               Per-Page Time &amp; Modal T4 Compute Cost
             </h3>
-            <p className="text-xs text-paper-800/70 mt-0.5">
-              Plots KSampler + VAE render duration (sec) on primary axis with exact GPU cost ($) on secondary line.
+            <p className="text-xs text-slate-400 mt-0.5">
+              Plots KSampler + VAE render duration (sec) on primary axis with exact GPU compute cost ($) on secondary axis.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-            Modal T4 Rate: $0.000164 / sec
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-300 bg-emerald-950/60 px-3.5 py-1.5 rounded-xl border border-emerald-500/30 font-mono">
+            T4 Billing: $0.000164 / sec
           </div>
         </div>
 
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={perPageData} margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#EBE5DB" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#2B2825", fontWeight: 600 }} />
+            <ComposedChart data={perPageData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+              <defs>
+                <linearGradient id="ksamplerGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#38BDF8" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#0284C7" stopOpacity={0.7} />
+                </linearGradient>
+                <linearGradient id="vaeGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#D97706" stopOpacity={0.7} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#E2E8F0", fontWeight: 600 }} />
               <YAxis
                 yAxisId="left"
                 unit="s"
-                tick={{ fontSize: 11, fill: "#64748B" }}
-                domain={[0, 12]}
-                label={{ value: "Render Duration (s)", angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748B" }}
+                tick={{ fontSize: 11, fill: "#94A3B8" }}
+                label={{ value: "Render Duration (s)", angle: -90, position: "insideLeft", fontSize: 11, fill: "#94A3B8" }}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
                 unit="$"
-                tick={{ fontSize: 11, fill: "#15803D" }}
-                domain={[0, 0.0025]}
-                label={{ value: "Compute Cost ($ USD)", angle: 90, position: "insideRight", fontSize: 11, fill: "#15803D" }}
+                tick={{ fontSize: 11, fill: "#34D399" }}
+                label={{ value: "Cost ($ USD)", angle: 90, position: "insideRight", fontSize: 11, fill: "#34D399" }}
               />
               <Tooltip content={renderCustomTooltip} />
-              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
               <Bar
                 yAxisId="left"
                 dataKey="ksampler_sec"
                 name="KSampler Duration (s)"
                 stackId="render"
-                fill="#0F172A"
+                fill="url(#ksamplerGradient)"
                 radius={[0, 0, 0, 0]}
               />
               <Bar
                 yAxisId="left"
                 dataKey="vae_sec"
-                name="VAE Decode Duration (s)"
+                name="VAE Decode (s)"
                 stackId="render"
-                fill="#38BDF8"
-                radius={[4, 4, 0, 0]}
+                fill="url(#vaeGradient)"
+                radius={[6, 6, 0, 0]}
               />
               <Line
                 yAxisId="right"
@@ -310,80 +353,60 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ run, runs, onS
                 name="Modal T4 Cost ($ USD)"
                 stroke="#10B981"
                 strokeWidth={3}
-                dot={{ r: 5, fill: "#10B981" }}
+                dot={{ r: 5, fill: "#10B981", stroke: "#FFFFFF", strokeWidth: 2 }}
               />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Structured Run Log & Character Bible Inspection */}
+      {/* Gemma 4 Character Bible & Production Logs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Gemma 4 Character Bible */}
-        <div className="p-5 rounded-2xl bg-white border border-paper-300 shadow-xs space-y-3">
+        {/* Character Bible Spec */}
+        <div className="p-6 rounded-3xl glass-panel space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-paper-900 flex items-center gap-2">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-studio-accent" />
               Gemma 4 VLM Character Bible Spec
             </h4>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-paper-100 text-paper-800 font-semibold">
+            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-white font-semibold">
               Headcount: {run.exact_headcount}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl bg-paper-50 border border-paper-200 text-xs font-mono text-paper-900 whitespace-pre-line leading-relaxed max-h-56 overflow-y-auto">
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/10 text-xs font-mono text-slate-200 whitespace-pre-line leading-relaxed max-h-60 overflow-y-auto">
             {run.character_bible}
           </div>
-          <div className="text-[11px] text-paper-800/70">
-            Vacation Setting: <strong className="text-paper-900">{run.vacation_setting}</strong>
+          <div className="text-[11px] text-slate-400">
+            Vacation Setting: <strong className="text-white">{run.vacation_setting}</strong>
           </div>
         </div>
 
-        {/* Generation Run Logs Table */}
-        <div className="p-5 rounded-2xl bg-white border border-paper-300 shadow-xs space-y-3">
-          <h4 className="text-sm font-bold text-paper-900 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            Stage Breakdown &amp; Tokens
-          </h4>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-paper-100 text-paper-800/80">
-                <tr>
-                  <th className="py-2 px-3 rounded-l">Metric</th>
-                  <th className="py-2 px-3">Value</th>
-                  <th className="py-2 px-3 rounded-r">Cost/Impact</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-paper-200 text-paper-900">
-                <tr>
-                  <td className="py-2 px-3 text-paper-800 font-sans">Active VLM</td>
-                  <td className="py-2 px-3 font-bold">{run.active_vlm_model}</td>
-                  <td className="py-2 px-3 text-emerald-700">Gemma 4 IT</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-3 text-paper-800 font-sans">Prompt / Output Tok</td>
-                  <td className="py-2 px-3 font-bold">
-                    {run.prompt_tokens} / {run.output_tokens}
-                  </td>
-                  <td className="py-2 px-3 text-purple-700">{run.tokens_per_sec} tok/s</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-3 text-paper-800 font-sans">VLM TTFT</td>
-                  <td className="py-2 px-3 font-bold">{(run.vlm_ttft_ms / 1000).toFixed(2)}s</td>
-                  <td className="py-2 px-3 text-paper-800/70">Initial token delay</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-3 text-paper-800 font-sans">Total 4-Page Pack Cost</td>
-                  <td className="py-2 px-3 font-bold text-emerald-700">${run.total_pack_cost_usd.toFixed(5)}</td>
-                  <td className="py-2 px-3 text-paper-800/70">{run.packs_per_dollar} packs / $1</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-3 text-paper-800 font-sans">Timestamp</td>
-                  <td className="py-2 px-3" colSpan={2}>
-                    {new Date(run.timestamp).toLocaleString()}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        {/* Raw Telemetry JSON Inspector */}
+        <div className="p-6 rounded-3xl glass-panel space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <Code2 className="w-4 h-4 text-studio-cyan" />
+              Raw Production Telemetry JSON
+            </h4>
+            <button
+              onClick={handleCopyJson}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy JSON</span>
+                </>
+              )}
+            </button>
+          </div>
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/10 text-[11px] font-mono text-emerald-400 max-h-60 overflow-y-auto">
+            <pre>{JSON.stringify(run, null, 2)}</pre>
           </div>
         </div>
       </div>

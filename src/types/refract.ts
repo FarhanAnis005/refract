@@ -19,6 +19,8 @@ export interface PageResult {
   total_render_ms: number;
   cost_usd: number;
   prompt_used: string;
+  seed?: number;
+  resolution?: string;
 }
 
 export interface VlmAnalysis {
@@ -52,6 +54,7 @@ export interface RunTelemetry {
   total_pack_cost_usd: number;
   packs_per_dollar: number;
   warmup_overlap_sec?: number;
+  raw_telemetry_json?: any;
 }
 
 export type SseEventName = "vlm_status" | "page_ready" | "telemetry_complete" | "error";
@@ -87,4 +90,6 @@ export interface SamplePreset {
   setting: string;
   previewUrl: string;
   characterBible: string;
+  resolution: string;
+  packDir?: string;
 }
