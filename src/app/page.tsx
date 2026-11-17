@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRefract } from "@/context/RefractContext";
+import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import {
   Sparkles,
   ArrowRight,
@@ -22,7 +23,6 @@ import {
 export default function LandingPage() {
   const router = useRouter();
   const { triggerWarmup, warmupStatus, setSelectedSamplePhoto } = useRefract();
-  const [sliderPosition, setSliderPosition] = useState(50);
   const [activeShowcasePack, setActiveShowcasePack] = useState<"pack5" | "pack3">("pack5");
 
   // Real photos and line art from user's uploaded packs
@@ -33,6 +33,7 @@ export default function LandingPage() {
       title: "Family of 5 in Ocean Waves",
       headcount: 5,
       resolution: "368 × 544",
+      aspectRatioClass: "aspect-[368/544]",
       cost: "~$0.012 / page",
     },
     pack3: {
@@ -41,6 +42,7 @@ export default function LandingPage() {
       title: "Family of 3 on Sunlit Beach",
       headcount: 3,
       resolution: "608 × 416",
+      aspectRatioClass: "aspect-[608/416]",
       cost: "~$0.008 / page",
     },
   };
@@ -136,7 +138,7 @@ export default function LandingPage() {
 
       {/* Interactive Before & After Showcase Slider with Real Photos! */}
       <section className="max-w-5xl mx-auto">
-        <div className="p-5 sm:p-7 rounded-3xl glass-panel-elevated space-y-5">
+        <div className="p-5 sm:p-7 rounded-3xl glass-panel-elevated space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div>
               <div className="flex items-center gap-2">
@@ -153,121 +155,39 @@ export default function LandingPage() {
             </div>
 
             {/* Showcase Pack Switcher */}
-            <div className="flex items-center gap-2 p-1 rounded-xl bg-white/5 border border-white/10 text-xs font-bold">
+            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold">
               <button
                 onClick={() => setActiveShowcasePack("pack5")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                   activeShowcasePack === "pack5"
-                    ? "bg-studio-accent text-white shadow-xs"
+                    ? "bg-studio-accent text-white shadow-glow"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
-                Family of 5 (Beach)
+                Family of 5 (Beach Waves)
               </button>
               <button
                 onClick={() => setActiveShowcasePack("pack3")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                   activeShowcasePack === "pack3"
-                    ? "bg-studio-accent text-white shadow-xs"
+                    ? "bg-studio-accent text-white shadow-glow"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
-                Family of 3 (Coast)
+                Family of 3 (Sunlit Beach)
               </button>
             </div>
           </div>
 
-          {/* Interactive Comparison Slider */}
-          <div
-            className="relative w-full aspect-[4/3] sm:aspect-[16/9] rounded-2xl overflow-hidden select-none border border-white/15 bg-black shadow-2xl"
-            onMouseMove={(e) => {
-              if (e.buttons === 1) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const pos = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-                setSliderPosition(Math.round(pos));
-              }
-            }}
-            onTouchMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const touch = e.touches[0];
-              const pos = Math.max(0, Math.min(100, ((touch.clientX - rect.left) / rect.width) * 100));
-              setSliderPosition(Math.round(pos));
-            }}
-          >
-            {/* "After" Image (Right: Real Vacation Photo) */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={activeShowcase.photo}
-              alt="Real Vacation Snapshot"
-              className="absolute inset-0 w-full h-full object-contain bg-slate-950"
-            />
-
-            {/* "Before" Layer Clipped (Left: Real AI Coloring Line Art) */}
-            <div
-              className="absolute inset-0 overflow-hidden bg-white"
-              style={{ width: `${sliderPosition}%` }}
-            >
-              <div className="w-full h-full flex items-center justify-center bg-white" style={{ width: "100%", height: "100%" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={activeShowcase.coloring}
-                  alt="Real AI Line Art Coloring Page"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-
-              {/* Tag for Left side */}
-              <div className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-black/85 text-white text-xs font-bold tracking-wide flex items-center gap-2 backdrop-blur-md border border-white/20 shadow-lg">
-                <Printer className="w-3.5 h-3.5 text-studio-accent" />
-                <span>#000000 on #FFFFFF Line Art</span>
-              </div>
-            </div>
-
-            {/* Tag for Right side */}
-            <div className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-black/85 text-white text-xs font-bold tracking-wide flex items-center gap-2 backdrop-blur-md border border-white/20 shadow-lg pointer-events-none">
-              <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-              <span>Original Vacation Photo</span>
-            </div>
-
-            {/* Slider Divider Bar with Glass Handle */}
-            <div
-              className="absolute top-0 bottom-0 w-1 bg-gradient-to-b from-studio-accent via-white to-studio-cyan shadow-[0_0_15px_rgba(249,115,22,0.8)] cursor-ew-resize"
-              style={{ left: `${sliderPosition}%` }}
-            >
-              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-slate-900 border-2 border-studio-accent shadow-glow flex items-center justify-center">
-                <SlidersHorizontal className="w-4 h-4 text-studio-accent" />
-              </div>
-            </div>
-
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={sliderPosition}
-              onChange={(e) => setSliderPosition(Number(e.target.value))}
-              aria-label="Before/After comparison slider"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize"
-            />
-          </div>
-
-          {/* Slider Meta Bar */}
-          <div className="flex flex-wrap items-center justify-between text-xs text-slate-300 font-mono px-1">
-            <div className="flex items-center gap-4">
-              <span>
-                <strong>Headcount:</strong> {activeShowcase.headcount} persons
-              </span>
-              <span>
-                <strong>Resolution:</strong> {activeShowcase.resolution}
-              </span>
-              <span>
-                <strong>Modal Cost:</strong>{" "}
-                <span className="text-emerald-400 font-bold">{activeShowcase.cost}</span>
-              </span>
-            </div>
-            <div className="text-slate-400 text-[11px] font-sans">
-              Drag slider horizontally to inspect line detail
-            </div>
-          </div>
+          {/* Bulletproof Interactive Before/After Component */}
+          <BeforeAfterSlider
+            photoUrl={activeShowcase.photo}
+            coloringUrl={activeShowcase.coloring}
+            title={activeShowcase.title}
+            aspectRatioClass={activeShowcase.aspectRatioClass}
+            headcount={activeShowcase.headcount}
+            resolution={activeShowcase.resolution}
+          />
         </div>
       </section>
 
