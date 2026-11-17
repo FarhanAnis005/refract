@@ -16,32 +16,34 @@ import {
   Image as ImageIcon,
   Users,
   Sun,
-  ShieldCheck,
   Clock,
-  Gauge,
-  Sliders,
   Terminal,
-  Cpu,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  Eye,
+  Check,
 } from "lucide-react";
 
 const SAMPLE_PRESETS = [
   {
     id: "pack5",
-    title: "Family of 5 (Beach Waves)",
+    title: "Family of 5 (Ocean Waves)",
     setting: "Ocean Beach Waves",
     headcount: 5,
     previewUrl: "/samples/pack-family-5/images.jpg",
-    badge: "5 Members • Pack 1",
-    resolution: "368×544",
+    badge: "Pack 1 • 5 Members",
+    resolution: "368 × 544",
   },
   {
     id: "pack3",
-    title: "Family of 3 (Golden Coast)",
-    setting: "Sunny Beachfront Coast",
+    title: "Family of 3 (Golden Shore)",
+    setting: "Sunlit Beachfront Coast",
     headcount: 3,
     previewUrl: "/samples/pack-family-3/istockphoto-2157349912-612x612.jpg",
-    badge: "3 Members • Pack 2",
-    resolution: "608×416",
+    badge: "Pack 2 • 3 Members",
+    resolution: "608 × 416",
   },
 ];
 
@@ -69,10 +71,12 @@ export default function StudioPage() {
   const [vacationSetting, setVacationSetting] = useState<string>("Ocean Beach Waves");
   const [headcount, setHeadcount] = useState<number>(5);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showBibleDetails, setShowBibleDetails] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const activePhoto = uploadedImage || selectedSamplePhoto;
 
+  // Handle custom file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -80,6 +84,7 @@ export default function StudioPage() {
       reader.onload = () => {
         if (typeof reader.result === "string") {
           setUploadedImage(reader.result);
+          setSelectedSamplePhoto(reader.result);
         }
       };
       reader.readAsDataURL(file);
@@ -95,20 +100,30 @@ export default function StudioPage() {
       reader.onload = () => {
         if (typeof reader.result === "string") {
           setUploadedImage(reader.result);
+          setSelectedSamplePhoto(reader.result);
         }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSelectPreset = (preset: (typeof SAMPLE_PRESETS)[0]) => {
+  // 1-Click Preset Selection: AUTO-TRIGGERS WORKFLOW IMMEDIATELY
+  const handleSelectPresetAndTrigger = (preset: (typeof SAMPLE_PRESETS)[0]) => {
     setUploadedImage(null);
     setSelectedSamplePhoto(preset.previewUrl);
     setVacationSetting(preset.setting);
     setHeadcount(preset.headcount);
+
+    // Auto-trigger generation stream immediately with zero friction
+    startGeneration({
+      imageUrl: preset.previewUrl,
+      setting: preset.setting,
+      headcount: preset.headcount,
+      speedMultiplier,
+    });
   };
 
-  const handleStartRun = () => {
+  const handleManualRun = () => {
     startGeneration({
       imageUrl: activePhoto,
       setting: vacationSetting,
@@ -118,30 +133,27 @@ export default function StudioPage() {
   };
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* Studio Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
+    <div className="max-w-7xl mx-auto space-y-6 pb-20">
+      {/* Studio Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-studio-accent flex items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-studio-accent flex items-center gap-1.5 font-mono">
             <Sparkles className="w-3.5 h-3.5" />
-            Interactive Coloring Book Studio
+            AI Coloring Book Studio
           </span>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5">
-            Family Keepsake Generator
+            Coloring Studio Workspace
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Gemma 4 VLM analyzes character geometry $\rightarrow$ Modal T4 streams 4 printable coloring pages.
-          </p>
         </div>
 
-        {/* Speed Multiplier & Fast Demo Controls */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 p-1.5 rounded-2xl glass-panel">
+        {/* Speed Toggle (Fast Demo 4x vs Real T4 1x) */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 p-1 rounded-xl glass-panel text-xs">
             <button
               onClick={() => setSpeedMultiplier(4)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 speedMultiplier === 4
-                  ? "bg-gradient-to-r from-studio-accent to-orange-600 text-white shadow-glow"
+                  ? "bg-studio-accent text-white shadow-glow"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -150,7 +162,7 @@ export default function StudioPage() {
             </button>
             <button
               onClick={() => setSpeedMultiplier(1)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 speedMultiplier === 1
                   ? "bg-white/10 text-white border border-white/15"
                   : "text-slate-400 hover:text-white"
@@ -163,302 +175,264 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Main Studio Controls Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Photo Upload & Presets (5 cols) */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="p-6 rounded-3xl glass-panel space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-studio-accent" />
-                Input Vacation Photo
-              </h2>
-              {uploadedImage && (
+      {/* 2-Way Selection Entry: 1-Click Samples (Auto-triggers) OR Upload Photo */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        {/* Left Side (7 cols): 1-Click Sample Presets with Immediate Trigger */}
+        <div className="md:col-span-7 p-5 rounded-3xl glass-panel space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-studio-accent" />
+              <h2 className="text-sm font-bold text-white">Choose Sample (Auto-Starts Workflow)</h2>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              1-Click Instant Run
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            {SAMPLE_PRESETS.map((preset) => {
+              const isSelected = activePhoto === preset.previewUrl;
+              return (
                 <button
-                  onClick={() => setUploadedImage(null)}
-                  className="text-[11px] font-semibold text-rose-400 hover:underline cursor-pointer"
+                  key={preset.id}
+                  onClick={() => handleSelectPresetAndTrigger(preset)}
+                  disabled={isStreaming}
+                  className={`group relative p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    isSelected
+                      ? "border-studio-accent bg-studio-accent/20 ring-2 ring-studio-accent shadow-glow"
+                      : "border-white/10 bg-slate-950/70 hover:border-white/30 hover:bg-slate-900"
+                  }`}
                 >
-                  Clear Custom Upload
-                </button>
-              )}
-            </div>
-
-            {/* Photo Preview / Dropzone */}
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragOver(true);
-              }}
-              onDragLeave={() => setIsDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`relative aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer border-2 transition-all flex flex-col items-center justify-center group ${
-                isDragOver
-                  ? "border-studio-accent bg-studio-accent/10 scale-[1.01]"
-                  : "border-dashed border-white/20 hover:border-studio-accent/70 bg-slate-950/60"
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-
-              {activePhoto ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={activePhoto}
-                    alt="Active Input Vacation Snapshot"
-                    className="w-full h-full object-contain group-hover:scale-102 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-xs font-semibold gap-2 backdrop-blur-xs">
-                    <Upload className="w-5 h-5 text-studio-accent" />
-                    <span>Click or Drag to Swap Photo</span>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center p-6 space-y-2 text-slate-400">
-                  <Upload className="w-8 h-8 text-slate-500 mx-auto" />
-                  <p className="text-xs font-bold text-white">Drag &amp; drop a family photo</p>
-                  <p className="text-[11px] text-slate-500">PNG, JPG, or SVG up to 10MB</p>
-                </div>
-              )}
-            </div>
-
-            {/* 1-Click Sample Presets with Real Photos */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold text-slate-300 block">
-                Or Select a Real Photo Preset:
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {SAMPLE_PRESETS.map((preset) => {
-                  const isSelected = activePhoto === preset.previewUrl;
-                  return (
-                    <button
-                      key={preset.id}
-                      onClick={() => handleSelectPreset(preset)}
-                      className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? "border-studio-accent bg-studio-accent/15 ring-1 ring-studio-accent shadow-glow"
-                          : "border-white/10 glass-panel hover:bg-white/5 text-slate-300"
-                      }`}
-                    >
-                      <div className="aspect-[4/3] rounded-xl overflow-hidden bg-black mb-2 border border-white/10">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={preset.previewUrl}
-                          alt={preset.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <p className="text-xs font-bold text-white truncate">{preset.title}</p>
-                      <span className="text-[10px] text-studio-accent font-mono block mt-0.5">
-                        {preset.badge}
+                  <div className="aspect-[4/3] rounded-xl overflow-hidden bg-black mb-2 border border-white/10 relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={preset.previewUrl}
+                      alt={preset.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="px-2.5 py-1 rounded-lg bg-studio-accent text-white font-bold text-[11px] shadow-glow flex items-center gap-1">
+                        <Play className="w-3 h-3 fill-white" />
+                        Run Workflow
                       </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                    </div>
+                  </div>
 
-            {/* Setting & Headcount Customization */}
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10 text-xs">
-              <div>
-                <label className="font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  Vacation Setting
-                </label>
-                <input
-                  type="text"
-                  value={vacationSetting}
-                  onChange={(e) => setVacationSetting(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950/80 border border-white/15 text-xs text-white font-medium focus:border-studio-accent focus:outline-hidden"
-                />
-              </div>
-              <div>
-                <label className="font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-blue-400" />
-                  Headcount
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={8}
-                  value={headcount}
-                  onChange={(e) => setHeadcount(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950/80 border border-white/15 text-xs text-white font-medium focus:border-studio-accent focus:outline-hidden"
-                />
-              </div>
-            </div>
-
-            {/* Launch Action Button */}
-            <div className="pt-2">
-              {isStreaming ? (
-                <button
-                  onClick={cancelGeneration}
-                  className="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <RotateCcw className="w-4 h-4 animate-spin" />
-                  Cancel Generation Stream
+                  <div>
+                    <h3 className="text-xs font-bold text-white group-hover:text-studio-accent transition-colors truncate">
+                      {preset.title}
+                    </h3>
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5 font-mono">
+                      <span>{preset.badge}</span>
+                      <span className="text-studio-cyan">{preset.resolution}</span>
+                    </div>
+                  </div>
                 </button>
-              ) : (
-                <button
-                  onClick={handleStartRun}
-                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-studio-accent via-orange-600 to-amber-600 hover:opacity-95 text-white font-extrabold text-sm shadow-glow hover:shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer group"
-                >
-                  <Play className="w-4 h-4 fill-white text-white group-hover:scale-115 transition-transform" />
-                  <span>Generate 4-Page Coloring Book</span>
-                </button>
-              )}
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Right Column: Gemma 4 VLM Character Bible Stream (7 cols) */}
-        <div className="lg:col-span-7 space-y-6">
-          <div className="p-6 rounded-3xl glass-panel space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-studio-accent animate-pulse" />
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-studio-accent" />
-                  Gemma 4 VLM Analysis Terminal
-                </h3>
-              </div>
-
-              {vlmAnalysis && (
-                <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 font-bold">
-                  Confidence: {((vlmAnalysis.confidence_score || 0.985) * 100).toFixed(1)}%
-                </span>
-              )}
-            </div>
-
-            {/* Streaming Progress Bar */}
-            {isStreaming && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-slate-300 font-semibold flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-studio-accent animate-ping" />
-                    {streamStage === "vlm_analyzing"
-                      ? "Gemma 4 extracting character tokens..."
-                      : `Streaming Coloring Pages (${currentPages.length}/4)...`}
-                  </span>
-                  <span className="font-bold text-studio-accent">{streamProgress}%</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-slate-950 overflow-hidden border border-white/10">
-                  <div
-                    className="h-full bg-gradient-to-r from-studio-accent via-amber-400 to-emerald-400 transition-all duration-300 shadow-glow"
-                    style={{ width: `${streamProgress}%` }}
-                  />
-                </div>
-              </div>
+        {/* Right Side (5 cols): Custom Photo Upload Dropzone */}
+        <div className="md:col-span-5 p-5 rounded-3xl glass-panel flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Upload className="w-4 h-4 text-blue-400" />
+              <span>Or Upload Custom Photo</span>
+            </h2>
+            {uploadedImage && (
+              <button
+                onClick={() => setUploadedImage(null)}
+                className="text-[11px] text-rose-400 hover:underline font-semibold cursor-pointer"
+              >
+                Clear Custom
+              </button>
             )}
+          </div>
 
-            {/* VLM Content Card */}
-            {vlmAnalysis ? (
-              <div className="space-y-4 animate-in fade-in">
-                {/* VLM Metric Pills */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px] font-mono">
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                    <span className="text-slate-400 block text-[10px] uppercase">Model</span>
-                    <strong className="text-white truncate block">{vlmAnalysis.active_vlm_model}</strong>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                    <span className="text-slate-400 block text-[10px] uppercase">Headcount</span>
-                    <strong className="text-white">{vlmAnalysis.exact_headcount} Persons</strong>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                    <span className="text-slate-400 block text-[10px] uppercase">VLM TTFT</span>
-                    <strong className="text-white">
-                      {(vlmAnalysis.vlm_ttft_ms / 1000).toFixed(2)}s
-                    </strong>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                    <span className="text-slate-400 block text-[10px] uppercase">Throughput</span>
-                    <strong className="text-emerald-400">{vlmAnalysis.tokens_per_sec} tok/s</strong>
-                  </div>
-                </div>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`flex-1 min-h-[120px] rounded-2xl border-2 border-dashed p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+              isDragOver
+                ? "border-studio-accent bg-studio-accent/15 scale-[1.01]"
+                : "border-white/20 hover:border-studio-accent/70 bg-slate-950/60"
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
 
-                {/* Left-to-Right Character Bible Terminal View */}
-                <div className="p-4 rounded-2xl bg-slate-950/90 border border-white/10 font-mono text-xs leading-relaxed space-y-2 shadow-inner">
-                  <div className="text-[11px] text-studio-accent font-bold tracking-wider uppercase flex items-center justify-between pb-1 border-b border-white/10">
-                    <span>Character Bible (Left-to-Right Ordering):</span>
-                    <span className="text-slate-400 font-normal">
-                      Tokens: {vlmAnalysis.prompt_tokens} in / {vlmAnalysis.output_tokens} out
-                    </span>
-                  </div>
-                  <p className="whitespace-pre-line text-slate-200">{vlmAnalysis.character_bible}</p>
+            {uploadedImage ? (
+              <div className="flex items-center gap-3 text-left">
+                <div className="w-14 h-14 rounded-xl overflow-hidden border border-white/20 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={uploadedImage} alt="Uploaded snapshot" className="w-full h-full object-cover" />
                 </div>
-              </div>
-            ) : isStreaming ? (
-              <div className="p-10 text-center space-y-3 bg-slate-950/60 rounded-2xl border border-dashed border-white/15">
-                <div className="w-10 h-10 rounded-full border-2 border-studio-accent border-t-transparent animate-spin mx-auto" />
-                <p className="text-sm font-bold text-white">
-                  Gemma 4 Vision-Language Model analyzing character geometry...
-                </p>
-                <p className="text-xs text-slate-400 font-mono">
-                  Calculating TTFT &amp; building left-to-right character tokens
-                </p>
+                <div>
+                  <span className="text-xs font-bold text-white block">Custom Photo Loaded</span>
+                  <span className="text-[11px] text-emerald-400 font-mono">Ready to Generate</span>
+                </div>
               </div>
             ) : (
-              <div className="p-10 text-center space-y-2 bg-slate-950/40 rounded-2xl border border-dashed border-white/10 text-slate-400">
-                <Sparkles className="w-8 h-8 text-slate-600 mx-auto stroke-[1.5]" />
-                <p className="text-xs font-bold text-white">Awaiting Generation Trigger</p>
-                <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
-                  Click &quot;Generate 4-Page Coloring Book&quot; to begin streaming the Gemma 4 Character Bible and
-                  4 sequential coloring illustrations.
-                </p>
-              </div>
-            )}
-
-            {/* Stream Error Alert if any */}
-            {streamError && (
-              <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{streamError}</span>
-              </div>
-            )}
-
-            {/* Generation Completed Banner */}
-            {streamStage === "completed" && activeRunTelemetry && (
-              <div className="p-4 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-200 animate-in fade-in shadow-glow-emerald">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <div>
-                    <span className="font-bold text-white text-sm">4-Page Pack Generation Complete!</span>
-                    <span className="text-[11px] text-emerald-400 block font-mono mt-0.5">
-                      E2E Duration: {activeRunTelemetry.total_e2e_sec}s • Total Cost: $
-                      {activeRunTelemetry.total_pack_cost_usd.toFixed(4)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={resetStudio}
-                    className="px-3.5 py-2 rounded-xl glass-panel hover:bg-white/10 text-white font-bold transition-all text-xs cursor-pointer"
-                  >
-                    Reset Studio
-                  </button>
-                  <Link
-                    href="/telemetry"
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all text-xs flex items-center gap-1.5 shadow-glow-emerald"
-                  >
-                    <BarChart3 className="w-3.5 h-3.5" />
-                    Inspect FinOps
-                  </Link>
-                </div>
+              <div className="space-y-1 text-slate-400">
+                <Upload className="w-6 h-6 mx-auto text-slate-500" />
+                <p className="text-xs font-bold text-white">Drag &amp; drop a family photo</p>
+                <p className="text-[10px] text-slate-500">PNG or JPG up to 10MB</p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Progressive 4-Slot Gallery */}
-      <section className="space-y-4 pt-4">
+      {/* Streamlined Options & Execution Toolbar */}
+      <div className="p-4 rounded-3xl glass-panel-elevated flex flex-wrap items-center justify-between gap-4 border border-white/10">
+        <div className="flex flex-wrap items-center gap-4 text-xs">
+          {/* Active Thumbnail */}
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/20 shrink-0 bg-black">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={activePhoto} alt="Selected photo" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 block font-mono uppercase">Selected Photo</span>
+              <span className="text-xs font-bold text-white truncate max-w-[150px] block">
+                {uploadedImage ? "Custom Upload" : activePhoto.includes("pack-family-5") ? "Family of 5" : "Family of 3"}
+              </span>
+            </div>
+          </div>
+
+          {/* Vacation Setting Input */}
+          <div className="flex items-center gap-1.5 pl-3 border-l border-white/10">
+            <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+            <div>
+              <span className="text-[10px] text-slate-400 block font-mono uppercase">Setting</span>
+              <input
+                type="text"
+                value={vacationSetting}
+                onChange={(e) => setVacationSetting(e.target.value)}
+                className="bg-transparent text-white font-bold text-xs focus:outline-hidden w-40 truncate"
+              />
+            </div>
+          </div>
+
+          {/* Headcount Input */}
+          <div className="flex items-center gap-1.5 pl-3 border-l border-white/10">
+            <Users className="w-4 h-4 text-blue-400 shrink-0" />
+            <div>
+              <span className="text-[10px] text-slate-400 block font-mono uppercase">Headcount</span>
+              <input
+                type="number"
+                min={1}
+                max={8}
+                value={headcount}
+                onChange={(e) => setHeadcount(Number(e.target.value))}
+                className="bg-transparent text-white font-bold text-xs focus:outline-hidden w-16"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Primary Action Button (Generate / Re-run OR Cancel) */}
+        <div className="flex items-center gap-2">
+          {isStreaming ? (
+            <button
+              onClick={cancelGeneration}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+              <span>Cancel Stream</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleManualRun}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-studio-accent via-orange-600 to-amber-600 hover:opacity-95 text-white font-bold text-xs shadow-glow transition-all cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5 fill-white" />
+              <span>{currentPages.length > 0 ? "Re-Generate Book" : "Generate 4-Page Book"}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Live Gemma 4 VLM Character Bible Overview Bar */}
+      <div className="p-4 rounded-2xl glass-panel space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <span
+              className={`w-2.5 h-2.5 rounded-full ${
+                vlmAnalysis ? "bg-emerald-400 shadow-[0_0_8px_#34D399]" : isStreaming ? "bg-studio-accent animate-ping" : "bg-slate-600"
+              }`}
+            />
+            <span className="font-bold text-white flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5 text-studio-accent" />
+              Gemma 4 VLM Character Analysis
+            </span>
+            {vlmAnalysis && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {vlmAnalysis.exact_headcount} Persons • 98.5% Confidence
+              </span>
+            )}
+          </div>
+
+          {vlmAnalysis && (
+            <button
+              onClick={() => setShowBibleDetails(!showBibleDetails)}
+              className="flex items-center gap-1 text-[11px] font-mono text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <span>{showBibleDetails ? "Hide Character Spec" : "View Character Spec"}</span>
+              {showBibleDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          )}
+        </div>
+
+        {/* Streaming Progress Bar */}
+        {isStreaming && (
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[11px] font-mono text-slate-300">
+              <span>
+                {streamStage === "vlm_analyzing"
+                  ? "Gemma 4 extracting character geometry..."
+                  : `Synthesizing Coloring Pages (${currentPages.length}/4 ready)...`}
+              </span>
+              <span className="font-bold text-studio-accent">{streamProgress}%</span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-slate-950 overflow-hidden border border-white/10">
+              <div
+                className="h-full bg-gradient-to-r from-studio-accent via-amber-400 to-emerald-400 transition-all duration-300 shadow-glow"
+                style={{ width: `${streamProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Expandable Character Bible Snippet */}
+        {vlmAnalysis && showBibleDetails && (
+          <div className="p-3.5 rounded-xl bg-slate-950/90 border border-white/10 font-mono text-xs text-slate-200 whitespace-pre-line leading-relaxed animate-in fade-in">
+            {vlmAnalysis.character_bible}
+          </div>
+        )}
+
+        {/* Stream Error Alert if any */}
+        {streamError && (
+          <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{streamError}</span>
+          </div>
+        )}
+      </div>
+
+      {/* 4-Page Progressive Coloring Gallery (Front & Center) */}
+      <section className="space-y-4">
         <ProgressiveGrid
           pages={currentPages}
           activeVariantIndex={activeVariantIndex}
